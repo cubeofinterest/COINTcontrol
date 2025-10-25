@@ -1,4 +1,4 @@
-package com.myname.mymodid;
+package com.coint.cointcontrol;
 
 public class ClientProxy extends CommonProxy {
 
