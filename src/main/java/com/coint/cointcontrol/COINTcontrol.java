@@ -28,7 +28,8 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
-//v2.0.0
+
+// v2.0.0a
 @Mod(modid = COINTcontrol.MODID, version = Tags.VERSION, name = "COINTcontrol", acceptedMinecraftVersions = "[1.7.10]")
 public class COINTcontrol {
 
