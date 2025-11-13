@@ -1,11 +1,11 @@
 package com.coint.cointcontrol;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DimData {
 
-    public Map<String, chunkdata> data;
+    public ConcurrentHashMap<String, chunkdata> data;
 
     public DimData(int chunckx, int chunckz, chunkdata cd) {
         String s = chunckx + "," + chunckz;
@@ -13,14 +13,14 @@ public class DimData {
     }
 
     public DimData(Map<String, chunkdata> data) {
-        this.data = data;
+        this.data = new ConcurrentHashMap<>(data);
     }
 
     public DimData() {
-        this.data = new HashMap<>();
+        this.data = new ConcurrentHashMap<>();
     }
 
-    public Map<String, chunkdata> getData() {
+    public ConcurrentHashMap<String, chunkdata> getData() {
         return this.data;
     }
 }

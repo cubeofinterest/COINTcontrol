@@ -4,11 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentText;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -26,16 +27,19 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 
 @Mod(modid = COINTcontrol.MODID, version = Tags.VERSION, name = "COINTcontrol", acceptedMinecraftVersions = "[1.7.10]")
 public class COINTcontrol {
 
     public static final String MODID = "cointcontrol";
     public static final Logger LOG = LogManager.getLogger(MODID);
-    public static final Map<World, DimData> DATA = new HashMap<>();
+    public static final ConcurrentHashMap<World, DimData> DATA = new ConcurrentHashMap<>();
     public static final DimDataHelper datahelper = new DimDataHelper();
+    public static final Map<Integer, String> toolTips = new HashMap<>();
     @SidedProxy(clientSide = "com.coint.cointcontrol.ClientProxy", serverSide = "com.coint.cointcontrol.CommonProxy")
     public static CommonProxy proxy;
+    public static SimpleNetworkWrapper network;
 
     @Mod.EventHandler
     public void serverLoad(FMLServerStartingEvent event) {
@@ -43,10 +47,12 @@ public class COINTcontrol {
         event.registerServerCommand(new ListBlocksCommand());
         event.registerServerCommand(new RemoveBlockCommand());
         proxy.serverStarting(event);
+
     }
 
     @SubscribeEvent
     public void onBlockPlaced(BlockEvent.PlaceEvent event) {
+        if (event.world.isRemote) return;
         final EntityPlayer player = event.player;
         final World w = event.world;
         final int x = event.x;
@@ -55,42 +61,49 @@ public class COINTcontrol {
         final int id = Block.getIdFromBlock(event.block);
         if (!Config.getBlocks()
             .containsKey(id)) return;
+
         final String chunkKey = (int) (x / 16) + "," + (int) (z / 16);
-        datahelper.AddToChunk(x, z, w, id, player);
+        new Thread(() -> {
+            datahelper.AddToChunk(x, z, w, id, player);
 
-        DimData dimData = COINTcontrol.DATA.get(w);
+            DimData dimData = COINTcontrol.DATA.get(w);
 
-        chunkdata chunk = dimData.getData()
-            .get(chunkKey);
+            chunkdata chunk = dimData.getData()
+                .get(chunkKey);
 
-        Map<Integer, Integer> map = chunk.getData();
-        if (map == null) {
-            map = new HashMap<Integer, Integer>();
-            try {
-                chunk.restrictions = map;
-            } catch (Throwable t) {
-                LOG.debug("onBlockPlaced: cannot setData on chunk, continuing with local map");
+            ConcurrentHashMap<Integer, Integer> map = chunk.getData();
+            if (map == null) {
+                map = new ConcurrentHashMap<Integer, Integer>();
+                try {
+                    chunk.restrictions = map;
+                } catch (Throwable t) {
+                    LOG.debug("onBlockPlaced: cannot setData on chunk, continuing with local map");
+                }
             }
-        }
 
-        int max = Config.getBlocks()
-            .get(id);
+            int max = Config.getBlocks()
+                .get(id);
 
-        player.addChatMessage(new ChatComponentText(String.format("%d/%d", map.get(id), max)));
-        if (map.get(id) > max) {
-            int meta = w.getBlockMetadata(x, y, z);
-            event.block.dropBlockAsItem(w, x, y, z, meta, 0);
-            w.setBlockToAir(x, y, z);
-            map.put(id, Math.max(map.getOrDefault(id, 0) - 1, 0));
-        }
+            PacketHandler.INSTANCEB
+                .sendTo(new PacketOverlay(String.format("%d/%d", map.get(id), max)), (EntityPlayerMP) event.player);
+            if (map.get(id) > max) {
+                int meta = w.getBlockMetadata(x, y, z);
+                event.block.dropBlockAsItem(w, x, y, z, meta, 0);
+                w.setBlockToAir(x, y, z);
+                map.put(id, Math.max(map.getOrDefault(id, 0) - 1, 0));
+            }
+        }).start();
     }
 
     @SubscribeEvent
     public void onBlockBreak(BlockEvent.BreakEvent event) {
-        int blockid = Block.getIdFromBlock(event.block);
-        if (!Config.getBlocks()
-            .containsKey(blockid)) return;
-        datahelper.RemoveFromChunk(event, blockid);
+        new Thread(() -> {
+            if (event.world.isRemote) return;
+            int blockid = Block.getIdFromBlock(event.block);
+            if (!Config.getBlocks()
+                .containsKey(blockid)) return;
+            datahelper.RemoveFromChunk(event, blockid);
+        }).start();
     }
 
     @Mod.EventHandler
@@ -106,6 +119,7 @@ public class COINTcontrol {
 
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) throws IOException {
+        if (event.world.isRemote) return;
         World world = event.world;
         if (world == null || world.isRemote) return;
         if (COINTcontrol.DATA.containsKey(world)) {
@@ -115,23 +129,51 @@ public class COINTcontrol {
     }
 
     @SubscribeEvent
-    public void onWorldSave(WorldEvent.Save event) throws IOException {
-        World world = event.world;
-        if (world == null || world.isRemote) return;
-        if (COINTcontrol.DATA.containsKey(world)) {
-            DimData data = COINTcontrol.DATA.get(world);
-            DimCache.writeData(world, data);
+    public void onPlayerLogin(cpw.mods.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent event) {
+
+        for (Map.Entry<Integer, Integer> el : Config.getBlocks()
+            .entrySet()) {
+            toolTips.put(el.getKey(), "You can place only " + el.getValue() + " blocks of this type in one chunk");
         }
+        PacketHandler.INSTANCE.sendToAll(new PacketToolTip(toolTips));
+
+    }
+
+    @SubscribeEvent
+    public void onWorldSave(WorldEvent.Save event) throws IOException {
+        new java.util.Timer().schedule(new java.util.TimerTask() {
+
+            @Override
+            public void run() {
+                for (Map.Entry<Integer, Integer> el : Config.getBlocks()
+                    .entrySet()) {
+                    toolTips
+                        .put(el.getKey(), "You can place only " + el.getValue() + " blocks of this type in one chunk");
+                }
+                PacketHandler.INSTANCE.sendToAll(new PacketToolTip(toolTips));
+            }
+        }, 2000);
     }
 
     @SubscribeEvent
     public void onWorldLoad(WorldEvent.Load event) {
+        if (event.world.isRemote) return;
         MinecraftServer server = MinecraftServer.getServer();
         for (WorldServer world : server.worldServers) {
-            COINTcontrol.DATA.put(world, DimCache.readData(world));
+            DimData data = DimCache.readData(world);
+            if (data == null) {
+                data = new DimData();
+
+            }
+            COINTcontrol.DATA.put(world, data);
         }
         File configFile = new File("config/cointcontrol.cfg");
         Config.synchronizeConfiguration(configFile);
+
+        for (Map.Entry<Integer, Integer> el : Config.getBlocks()
+            .entrySet()) {
+            toolTips.put(el.getKey(), "You can place only " + el.getValue() + " blocks of this type in one chunk");
+        }
 
     }
 
@@ -142,6 +184,7 @@ public class COINTcontrol {
         MinecraftForge.EVENT_BUS.register(this);
         proxy.preInit(event);
 
+        PacketHandler.init();
     }
 
     @Mod.EventHandler

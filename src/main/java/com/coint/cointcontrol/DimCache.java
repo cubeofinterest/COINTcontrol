@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.world.World;
 
@@ -56,14 +57,13 @@ public class DimCache {
         try (FileReader fileReader = new FileReader(saveFile)) {
             Object raw = GSON.fromJson(fileReader, Object.class);
             if (!(raw instanceof Map)) return null;
-
             Map<?, ?> rawmap = (Map<?, ?>) raw;
-            Map<String, chunkdata> result = new HashMap<>();
+            ConcurrentHashMap<String, chunkdata> result = new ConcurrentHashMap<>();
 
             for (Map.Entry<?, ?> e : rawmap.entrySet()) {
                 String key = String.valueOf(e.getKey());
                 Object value = e.getValue();
-                Map<Integer, Integer> mapa = new HashMap<>();
+                ConcurrentHashMap<Integer, Integer> mapa = new ConcurrentHashMap<>();
                 if (value instanceof Map) {
                     Map<?, ?> rawMap = (Map<?, ?>) value;
                     for (Map.Entry<?, ?> el : rawMap.entrySet()) {

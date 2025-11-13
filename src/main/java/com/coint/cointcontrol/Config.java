@@ -2,8 +2,7 @@ package com.coint.cointcontrol;
 
 import java.io.File;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraftforge.common.config.Configuration;
 
@@ -18,7 +17,7 @@ public class Config {
     private static String blocksJson = "{}";
 
     // В памяти - карта blockID -> count
-    public static Map<Integer, Integer> blocks = new HashMap<>();
+    public static ConcurrentHashMap<Integer, Integer> blocks = new ConcurrentHashMap<>();
 
     private static final Gson GSON = new Gson();
 
@@ -30,11 +29,11 @@ public class Config {
 
         // Парсим JSON в карту
         try {
-            Type type = new TypeToken<Map<Integer, Integer>>() {}.getType();
-            Map<Integer, Integer> map = GSON.fromJson(blocksJson, type);
+            Type type = new TypeToken<ConcurrentHashMap<Integer, Integer>>() {}.getType();
+            ConcurrentHashMap<Integer, Integer> map = GSON.fromJson(blocksJson, type);
             if (map != null) blocks = map;
         } catch (Exception e) {
-            blocks = new HashMap<>();
+            blocks = new ConcurrentHashMap<>();
         }
 
         if (configuration.hasChanged()) {
@@ -43,8 +42,8 @@ public class Config {
     }
 
     // Получить все блоки
-    public static Map<Integer, Integer> getBlocks() {
-        return new HashMap<>(blocks);
+    public static ConcurrentHashMap<Integer, Integer> getBlocks() {
+        return blocks;
     }
 
     // Добавить или обновить блок

@@ -1,5 +1,7 @@
 package com.coint.cointcontrol;
 
+import static com.coint.cointcontrol.COINTcontrol.toolTips;
+
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
@@ -19,16 +21,18 @@ public class RemoveBlockCommand extends CommandBase {
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
         if (args.length < 1) {
-            sender.addChatMessage(new ChatComponentText("Использование: /removeblock <blockID>"));
+            sender.addChatMessage(new ChatComponentText("usage: /removeblock <blockID>"));
             return;
         }
 
         try {
             int blockID = Integer.parseInt(args[0]);
             Config.removeBlock(blockID);
-            sender.addChatMessage(new ChatComponentText("Блок " + blockID + " удалён"));
+            toolTips.remove(blockID);
+            PacketHandler.INSTANCE.sendToAll(new PacketToolTip(toolTips));
+            sender.addChatMessage(new ChatComponentText("block " + blockID + " removed from config"));
         } catch (NumberFormatException e) {
-            sender.addChatMessage(new ChatComponentText("Неверный ID блока"));
+            sender.addChatMessage(new ChatComponentText("incorrect block id"));
         }
     }
 }

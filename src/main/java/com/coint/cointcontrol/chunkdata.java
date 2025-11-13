@@ -1,11 +1,11 @@
 package com.coint.cointcontrol;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class chunkdata {
 
-    public Map<Integer, Integer> restrictions = new HashMap<>();
+    public ConcurrentHashMap<Integer, Integer> restrictions = new ConcurrentHashMap<>();
 
     public chunkdata(int a, int b) {
         this.restrictions.put(a, b);
@@ -17,7 +17,7 @@ public class chunkdata {
 
     public chunkdata() {}
 
-    public Map<Integer, Integer> getData() {
+    public ConcurrentHashMap<Integer, Integer> getData() {
         return restrictions;
     }
 }

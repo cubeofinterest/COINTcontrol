@@ -1,6 +1,6 @@
 package com.coint.cointcontrol;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
@@ -11,6 +11,7 @@ import net.minecraftforge.event.world.BlockEvent;
 public class DimDataHelper {
 
     public void CacheChunk(int xs, int zs, World w) {
+
         if (w == null) return;
 
         int xc = xs / 16;
@@ -30,7 +31,7 @@ public class DimDataHelper {
                 .getData()
                 .put(chunkKey, new chunkdata());
 
-        Map<Integer, Integer> chunkData = COINTcontrol.DATA.get(w)
+        ConcurrentHashMap<Integer, Integer> chunkData = COINTcontrol.DATA.get(w)
             .getData()
             .get(chunkKey)
             .getData();
@@ -68,7 +69,7 @@ public class DimDataHelper {
                 .get(chunkKey) == null) {
             COINTcontrol.datahelper.CacheChunk(x, z, w);
         }
-        Map<Integer, Integer> map = COINTcontrol.DATA.get(w)
+        ConcurrentHashMap<Integer, Integer> map = COINTcontrol.DATA.get(w)
             .getData()
             .get(x / 16 + "," + z / 16)
             .getData();
@@ -88,12 +89,12 @@ public class DimDataHelper {
                 .getData()
                 .get(chunkKey) == null) {
             COINTcontrol.datahelper.CacheChunk(x, z, w);
+        } else {
+            ConcurrentHashMap<Integer, Integer> map = COINTcontrol.DATA.get(w)
+                .getData()
+                .get(x / 16 + "," + z / 16)
+                .getData();
+            map.put(id, map.getOrDefault(id, 0) + 1);
         }
-        Map<Integer, Integer> map = COINTcontrol.DATA.get(w)
-            .getData()
-            .get(x / 16 + "," + z / 16)
-            .getData();
-        map.put(id, map.getOrDefault(id, 0) + 1);
-
     }
 }

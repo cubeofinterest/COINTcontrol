@@ -22,10 +22,10 @@ public class ListBlocksCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) {
         Map<Integer, Integer> blocks = Config.getBlocks();
         if (blocks.isEmpty()) {
-            sender.addChatMessage(new ChatComponentText("Блоков нет"));
+            sender.addChatMessage(new ChatComponentText("config is empty"));
             return;
         }
-        sender.addChatMessage(new ChatComponentText("Блоки:"));
+        sender.addChatMessage(new ChatComponentText("Blocks:\n=============================="));
         for (Map.Entry<Integer, Integer> e : blocks.entrySet()) {
             sender.addChatMessage(new ChatComponentText("ID " + e.getKey() + " → " + e.getValue()));
         }
